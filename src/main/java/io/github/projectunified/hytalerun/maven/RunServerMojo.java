@@ -103,12 +103,6 @@ public class RunServerMojo extends AbstractMojo {
     private List<String> serverArgs;
 
     /**
-     * Run in bare mode (no worlds, ports, or directories created).
-     */
-    @Parameter(property = "hytale.bare", defaultValue = "false")
-    private boolean bare;
-
-    /**
      * Disable sentry report to Hytale
      */
     @Parameter(property = "hytale.disableSentry", defaultValue = "true")
@@ -139,7 +133,6 @@ public class RunServerMojo extends AbstractMojo {
             List<String> serverArgsList = new ServerCommandBuilder()
                     .assetsPath(resolvedAssets)
                     .authMode(authMode)
-                    .bare(bare)
                     .disableSentry(disableSentry)
                     .bootCommands(bootCommands)
                     .serverArgs(serverArgs)

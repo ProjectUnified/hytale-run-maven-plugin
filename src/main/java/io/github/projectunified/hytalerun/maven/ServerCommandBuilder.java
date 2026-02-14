@@ -7,7 +7,7 @@ import java.util.List;
 /**
  * Builds the server CLI arguments shared by both forked and in-process runners.
  * <p>
- * This builder only produces server-level arguments (assets, auth mode, bare,
+ * This builder only produces server-level arguments (assets, auth mode,
  * boot commands, etc.). Process-level options (JVM args, debug, java
  * executable)
  * are handled by the runner implementations.
@@ -18,7 +18,6 @@ import java.util.List;
  * List<String> args = new ServerCommandBuilder()
  *         .assetsPath(assets)
  *         .authMode("offline")
- *         .bare(true)
  *         .build();
  * }</pre>
  */
@@ -26,7 +25,6 @@ public class ServerCommandBuilder {
 
     private File assetsPath;
     private String authMode = "offline";
-    private boolean bare;
     private boolean disableSentry;
     private List<String> bootCommands;
     private List<String> serverArgs;
@@ -38,11 +36,6 @@ public class ServerCommandBuilder {
 
     public ServerCommandBuilder authMode(String authMode) {
         this.authMode = authMode;
-        return this;
-    }
-
-    public ServerCommandBuilder bare(boolean bare) {
-        this.bare = bare;
         return this;
     }
 
@@ -81,11 +74,6 @@ public class ServerCommandBuilder {
         // Auth mode
         args.add("--auth-mode");
         args.add(authMode);
-
-        // Bare mode
-        if (bare) {
-            args.add("--bare");
-        }
 
         // Disable Sentry
         if (disableSentry) {
