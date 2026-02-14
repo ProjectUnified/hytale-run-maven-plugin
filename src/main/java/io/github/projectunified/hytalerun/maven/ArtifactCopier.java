@@ -36,7 +36,13 @@ public class ArtifactCopier {
      * @throws IOException          if a file copy fails
      * @throws MojoFailureException if the project artifact is not available
      */
-    public void copyArtifacts(MavenProject project, File targetDir) throws IOException, MojoFailureException {
+    public void copyArtifacts(MavenProject project, File targetDir, boolean clearMods)
+            throws IOException, MojoFailureException {
+        // Clear existing JARs from the mods directory
+        if (clearMods) {
+            clearJars(targetDir);
+        }
+
         // Copy the project's own artifact
         File projectJar = resolveProjectArtifact(project);
         if (!hasManifest(projectJar)) {
@@ -89,6 +95,17 @@ public class ArtifactCopier {
 
         throw new MojoFailureException(
                 "Project artifact not found. Make sure the project is packaged before running this goal.");
+    }
+
+    private void clearJars(File directory) throws IOException {
+        File[] jars = directory.listFiles((dir, name) -> name.endsWith(".jar"));
+        if (jars != null) {
+            for (File jar : jars) {
+                Files.delete(jar.toPath());
+                log.debug("Deleted: " + jar.getName());
+            }
+            log.info("Cleared " + jars.length + " JAR(s) from " + directory.getAbsolutePath());
+        }
     }
 
     private boolean hasManifest(File jarFile) {

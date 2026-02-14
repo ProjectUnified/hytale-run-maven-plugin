@@ -114,6 +114,12 @@ public class RunServerMojo extends AbstractMojo {
     @Parameter(property = "hytale.bootCommands")
     private List<String> bootCommands;
 
+    /**
+     * Clear all JAR files from the mods directory before copying new ones.
+     */
+    @Parameter(property = "hytale.clearMods", defaultValue = "true")
+    private boolean clearMods;
+
     @Override
     public void execute() throws MojoExecutionException, MojoFailureException {
         try {
@@ -121,7 +127,7 @@ public class RunServerMojo extends AbstractMojo {
             File resolvedAssets = new AssetsResolver(getLog()).resolve(assetsPath, resolvedServerJar);
             File resolvedModsDir = resolveModsDirectory();
 
-            new ArtifactCopier(getLog()).copyArtifacts(project, resolvedModsDir);
+            new ArtifactCopier(getLog()).copyArtifacts(project, resolvedModsDir, clearMods);
 
             // Build server arguments (shared across execution modes)
             List<String> serverArgsList = new ServerCommandBuilder()
