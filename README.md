@@ -1,4 +1,4 @@
-# Hytale Run Maven Plugin
+# Hytale Run Maven Plugin ![Maven Central Version](https://img.shields.io/maven-central/v/io.github.projectunified/hytale-run-maven-plugin)
 
 A Maven plugin that runs a Hytale server with your plugin loaded for
 development.
@@ -46,7 +46,7 @@ mvn hytale-run:run
 ## Configuration
 
 | Parameter           | Property                   | Default                      | Description                                                   |
-|:--------------------|:---------------------------|:-----------------------------|:--------------------------------------------------------------|
+| :------------------ | :------------------------- | :--------------------------- | :------------------------------------------------------------ |
 | `serverJar`         | `hytale.serverJar`         | _(auto-resolved)_            | Path to the Hytale server JAR                                 |
 | `assetsPath`        | `hytale.assetsPath`        | _(auto-resolved)_            | Path to assets directory/zip                                  |
 | `artifactFile`      | `hytale.artifactFile`      | `target/*.jar`               | The project JAR file to be used in the server                 |
