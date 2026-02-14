@@ -15,8 +15,12 @@ import java.util.List;
  * Runs a Hytale server with the project's plugin artifacts loaded.
  * <p>
  * Copies the project JAR and its dependencies into a mods directory,
- * then launches the Hytale server as a child process with the appropriate CLI
- * options.
+ * then launches the Hytale server as a forked child process with the
+ * appropriate CLI options.
+ * <p>
+ * When Maven is running in debug mode (e.g. IntelliJ's Debug button), the
+ * plugin automatically configures the forked server with a JDWP agent so you
+ * can attach a Remote JVM Debug configuration.
  */
 @Mojo(name = "run", defaultPhase = LifecyclePhase.PACKAGE, requiresDependencyResolution = ResolutionScope.RUNTIME)
 @Execute(phase = LifecyclePhase.PACKAGE)
@@ -67,7 +71,9 @@ public class RunServerMojo extends AbstractMojo {
     private String authMode;
 
     /**
-     * Enable remote JDWP debugging.
+     * Enable remote JDWP debugging on the forked server process.
+     * When not set, the plugin auto-detects if Maven is being debugged
+     * and enables it automatically.
      */
     @Parameter(property = "hytale.debug", defaultValue = "false")
     private boolean debug;
@@ -85,7 +91,7 @@ public class RunServerMojo extends AbstractMojo {
     private boolean debugSuspend;
 
     /**
-     * Additional JVM arguments.
+     * Additional JVM arguments for the forked server process.
      */
     @Parameter(property = "hytale.jvmArgs")
     private List<String> jvmArgs;
@@ -117,23 +123,21 @@ public class RunServerMojo extends AbstractMojo {
 
             new ArtifactCopier(getLog()).copyArtifacts(project, resolvedModsDir);
 
-            List<String> command = new ServerCommandBuilder(getLog())
-                    .serverJar(resolvedServerJar)
+            // Build server arguments (shared across execution modes)
+            List<String> serverArgsList = new ServerCommandBuilder()
                     .assetsPath(resolvedAssets)
                     .authMode(authMode)
                     .bare(bare)
-                    .debug(debug)
-                    .debugPort(debugPort)
-                    .debugSuspend(debugSuspend)
-                    .jvmArgs(jvmArgs)
                     .bootCommands(bootCommands)
                     .serverArgs(serverArgs)
                     .build();
 
-            getLog().info("Launching Hytale server:");
-            getLog().info(String.join(" ", command));
-
-            new ServerProcessRunner(getLog()).run(command, workingDirectory);
+            new ForkedServerRunner(getLog(), resolvedServerJar)
+                    .debug(debug)
+                    .debugPort(debugPort)
+                    .debugSuspend(debugSuspend)
+                    .jvmArgs(jvmArgs)
+                    .run(serverArgsList, workingDirectory);
         } catch (IOException e) {
             throw new MojoExecutionException("Failed to run Hytale server", e);
         }

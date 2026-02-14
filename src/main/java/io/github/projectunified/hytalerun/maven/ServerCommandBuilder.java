@@ -1,50 +1,34 @@
 package io.github.projectunified.hytalerun.maven;
 
-import org.apache.maven.plugin.logging.Log;
-
 import java.io.File;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Builds the command line for launching the Hytale server.
+ * Builds the server CLI arguments shared by both forked and in-process runners.
+ * <p>
+ * This builder only produces server-level arguments (assets, auth mode, bare,
+ * boot commands, etc.). Process-level options (JVM args, debug, java
+ * executable)
+ * are handled by the runner implementations.
  * <p>
  * Usage:
  *
  * <pre>{@code
- * List<String> cmd = new ServerCommandBuilder(log)
- *         .serverJar(jar)
+ * List<String> args = new ServerCommandBuilder()
  *         .assetsPath(assets)
  *         .authMode("offline")
- *         .debug(true)
- *         .debugPort(5005)
+ *         .bare(true)
  *         .build();
  * }</pre>
  */
 public class ServerCommandBuilder {
 
-    private final Log log;
-
-    private File serverJar;
     private File assetsPath;
     private String authMode = "offline";
     private boolean bare;
-    private boolean debug;
-    private int debugPort = 5005;
-    private boolean debugSuspend;
-    private List<String> jvmArgs;
     private List<String> bootCommands;
     private List<String> serverArgs;
-
-    public ServerCommandBuilder(Log log) {
-        this.log = log;
-    }
-
-    public ServerCommandBuilder serverJar(File serverJar) {
-        this.serverJar = serverJar;
-        return this;
-    }
 
     public ServerCommandBuilder assetsPath(File assetsPath) {
         this.assetsPath = assetsPath;
@@ -61,26 +45,6 @@ public class ServerCommandBuilder {
         return this;
     }
 
-    public ServerCommandBuilder debug(boolean debug) {
-        this.debug = debug;
-        return this;
-    }
-
-    public ServerCommandBuilder debugPort(int debugPort) {
-        this.debugPort = debugPort;
-        return this;
-    }
-
-    public ServerCommandBuilder debugSuspend(boolean debugSuspend) {
-        this.debugSuspend = debugSuspend;
-        return this;
-    }
-
-    public ServerCommandBuilder jvmArgs(List<String> jvmArgs) {
-        this.jvmArgs = jvmArgs;
-        return this;
-    }
-
     public ServerCommandBuilder bootCommands(List<String> bootCommands) {
         this.bootCommands = bootCommands;
         return this;
@@ -92,76 +56,44 @@ public class ServerCommandBuilder {
     }
 
     /**
-     * Builds the command line from the configured parameters.
+     * Builds the server CLI arguments.
      *
-     * @return the command line as a list of strings
+     * @return the argument list
      * @throws IllegalStateException if required parameters are missing
      */
     public List<String> build() {
-        if (serverJar == null) {
-            throw new IllegalStateException("serverJar is required");
-        }
         if (assetsPath == null) {
             throw new IllegalStateException("assetsPath is required");
         }
 
-        List<String> cmd = new ArrayList<>();
-        cmd.add(resolveJavaExecutable());
-
-        // JVM arguments
-        if (jvmArgs != null) {
-            cmd.addAll(jvmArgs);
-        }
-
-        // Debug configuration
-        if (debug) {
-            String suspend = debugSuspend ? "y" : "n";
-            cmd.add("-agentlib:jdwp=transport=dt_socket,server=y,suspend=" + suspend + ",address=*:" + debugPort);
-            log.info("Debug mode enabled on port " + debugPort + " (suspend=" + suspend + ")");
-        }
-
-        // Server JAR
-        cmd.add("-jar");
-        cmd.add(serverJar.getAbsolutePath());
+        List<String> args = new ArrayList<>();
 
         // Assets
-        cmd.add("--assets");
-        cmd.add(assetsPath.getAbsolutePath());
+        args.add("--assets");
+        args.add(assetsPath.getAbsolutePath());
 
         // Auth mode
-        cmd.add("--auth-mode");
-        cmd.add(authMode);
+        args.add("--auth-mode");
+        args.add(authMode);
 
         // Bare mode
         if (bare) {
-            cmd.add("--bare");
+            args.add("--bare");
         }
 
         // Boot commands
         if (bootCommands != null && !bootCommands.isEmpty()) {
             for (String bootCommand : bootCommands) {
-                cmd.add("--boot-command");
-                cmd.add(bootCommand);
+                args.add("--boot-command");
+                args.add(bootCommand);
             }
         }
 
         // Additional server arguments
         if (serverArgs != null) {
-            cmd.addAll(serverArgs);
+            args.addAll(serverArgs);
         }
 
-        return cmd;
-    }
-
-    private String resolveJavaExecutable() {
-        String javaHome = System.getenv("JAVA_HOME");
-        if (javaHome != null && !javaHome.isEmpty()) {
-            Path javaBin = Path.of(javaHome, "bin", "java");
-            if (javaBin.toFile().isFile()) {
-                log.info("Using JAVA_HOME: " + javaHome);
-                return javaBin.toString();
-            }
-        }
-        return "java";
+        return args;
     }
 }
