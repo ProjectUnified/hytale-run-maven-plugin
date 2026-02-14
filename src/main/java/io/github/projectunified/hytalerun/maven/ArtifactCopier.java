@@ -91,14 +91,18 @@ public class ArtifactCopier {
             // Check scope
             String scope = artifact.getScope();
             if (allowedScopes != null && !allowedScopes.contains(scope)) {
+                log.debug("Excluded by scope: " + artifact.getId() + " (" + scope + ")");
                 continue;
             }
 
             File file = artifact.getFile();
-            if (file != null && file.isFile() && hasManifest(file)) {
-                copyFile(file, targetDir);
-                log.debug("Copied dependency: " + artifact.getId());
+            if (file == null || !file.isFile() || !hasManifest(file)) {
+                log.debug("Excluded by file checker: " + artifact.getId());
+                continue;
             }
+
+            copyFile(file, targetDir);
+            log.info("Copied dependency: " + artifact.getId());
         }
     }
 
