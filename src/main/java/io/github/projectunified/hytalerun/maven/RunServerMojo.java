@@ -121,7 +121,7 @@ public class RunServerMojo extends AbstractMojo {
     /**
      * The artifact file to be used in the server
      */
-    @Parameter(property = "hytale.artifactFile", defaultValue = "${project.buildDirectory}/${project.finalName}.jar")
+    @Parameter(property = "hytale.artifactFile", defaultValue = "${project.build.directory}/${project.build.finalName}.jar")
     private File artifactFile;
 
     /**
