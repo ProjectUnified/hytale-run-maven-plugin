@@ -11,10 +11,12 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.Set;
+import java.util.jar.JarFile;
 
 /**
  * Copies the project artifact and its runtime dependencies into the mods
- * directory.
+ * directory. Only JARs containing a {@code manifest.json} at the root are
+ * copied, since the Hytale plugin system requires it.
  */
 public class ArtifactCopier {
 
@@ -26,6 +28,7 @@ public class ArtifactCopier {
 
     /**
      * Copies the project JAR and runtime dependencies into the target directory.
+     * Only artifacts containing {@code manifest.json} are copied.
      * The server artifact ({@code com.hypixel.hytale:Server}) is excluded.
      *
      * @param project   the Maven project
@@ -42,10 +45,16 @@ public class ArtifactCopier {
         }
 
         File projectJar = projectArtifact.getFile();
+        if (!hasManifest(projectJar)) {
+            throw new MojoFailureException(
+                    "Project artifact does not contain manifest.json. "
+                            + "Hytale plugins require a manifest.json at the JAR root.");
+        }
         copyFile(projectJar, targetDir);
         log.info("Copied project artifact: " + projectJar.getName());
 
-        // Copy runtime dependencies (excluding the server itself)
+        // Copy runtime dependencies that have manifest.json (excluding the server
+        // itself)
         Set<Artifact> artifacts = project.getArtifacts();
         if (artifacts != null) {
             for (Artifact artifact : artifacts) {
@@ -57,12 +66,21 @@ public class ArtifactCopier {
                 String scope = artifact.getScope();
                 if (Artifact.SCOPE_COMPILE.equals(scope) || Artifact.SCOPE_RUNTIME.equals(scope)) {
                     File file = artifact.getFile();
-                    if (file != null && file.isFile()) {
+                    if (file != null && file.isFile() && hasManifest(file)) {
                         copyFile(file, targetDir);
                         log.debug("Copied dependency: " + artifact.getId());
                     }
                 }
             }
+        }
+    }
+
+    private boolean hasManifest(File jarFile) {
+        try (JarFile jar = new JarFile(jarFile)) {
+            return jar.getEntry("manifest.json") != null;
+        } catch (IOException e) {
+            log.debug("Could not read JAR " + jarFile.getName() + ": " + e.getMessage());
+            return false;
         }
     }
 

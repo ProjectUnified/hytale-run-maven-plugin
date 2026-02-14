@@ -122,7 +122,6 @@ public class RunServerMojo extends AbstractMojo {
             List<String> command = new ServerCommandBuilder(getLog())
                     .serverJar(resolvedServerJar)
                     .assetsPath(resolvedAssets)
-                    .modsDirectory(resolvedModsDir)
                     .authMode(authMode)
                     .bare(bare)
                     .debug(debug)

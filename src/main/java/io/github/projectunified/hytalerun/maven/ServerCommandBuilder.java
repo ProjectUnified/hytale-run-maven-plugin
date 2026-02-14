@@ -16,7 +16,6 @@ import java.util.List;
  * List<String> cmd = new ServerCommandBuilder(log)
  *         .serverJar(jar)
  *         .assetsPath(assets)
- *         .modsDirectory(mods)
  *         .authMode("offline")
  *         .debug(true)
  *         .debugPort(5005)
@@ -29,7 +28,6 @@ public class ServerCommandBuilder {
 
     private File serverJar;
     private File assetsPath;
-    private File modsDirectory;
     private String authMode = "offline";
     private boolean bare;
     private boolean debug;
@@ -50,11 +48,6 @@ public class ServerCommandBuilder {
 
     public ServerCommandBuilder assetsPath(File assetsPath) {
         this.assetsPath = assetsPath;
-        return this;
-    }
-
-    public ServerCommandBuilder modsDirectory(File modsDirectory) {
-        this.modsDirectory = modsDirectory;
         return this;
     }
 
@@ -111,9 +104,6 @@ public class ServerCommandBuilder {
         if (assetsPath == null) {
             throw new IllegalStateException("assetsPath is required");
         }
-        if (modsDirectory == null) {
-            throw new IllegalStateException("modsDirectory is required");
-        }
 
         List<String> cmd = new ArrayList<>();
         cmd.add(resolveJavaExecutable());
@@ -134,10 +124,6 @@ public class ServerCommandBuilder {
         cmd.add("-jar");
         cmd.add(serverJar.getAbsolutePath());
 
-        // Mods directory
-        cmd.add("--mods");
-        cmd.add(modsDirectory.getAbsolutePath());
-
         // Assets
         cmd.add("--assets");
         cmd.add(assetsPath.getAbsolutePath());
@@ -153,8 +139,10 @@ public class ServerCommandBuilder {
 
         // Boot commands
         if (bootCommands != null && !bootCommands.isEmpty()) {
-            cmd.add("--boot-command");
-            cmd.add(String.join(",", bootCommands));
+            for (String bootCommand : bootCommands) {
+                cmd.add("--boot-command");
+                cmd.add(bootCommand);
+            }
         }
 
         // Additional server arguments
