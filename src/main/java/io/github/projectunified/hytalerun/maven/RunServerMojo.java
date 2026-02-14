@@ -118,6 +118,31 @@ public class RunServerMojo extends AbstractMojo {
     @Parameter(property = "hytale.clearMods", defaultValue = "true")
     private boolean clearMods;
 
+    /**
+     * The artifact file to be used in the server
+     */
+    @Parameter(property = "hytale.artifactFile", defaultValue = "${project.buildDirectory}/${project.finalName}.jar")
+    private File artifactFile;
+
+    /**
+     * Whether to copy dependency artifacts into the mods directory.
+     */
+    @Parameter(property = "hytale.copyDependencies", defaultValue = "true")
+    private boolean copyDependencies;
+
+    /**
+     * Artifact scopes to include when copying dependencies.
+     */
+    @Parameter(property = "hytale.allowedScopes")
+    private List<String> allowedScopes;
+
+    /**
+     * Artifacts to exclude from copying, formatted as
+     * {@code groupId:artifactId}.
+     */
+    @Parameter(property = "hytale.excludedArtifacts")
+    private List<String> excludedArtifacts;
+
     @Override
     public void execute() throws MojoExecutionException, MojoFailureException {
         try {
@@ -125,7 +150,14 @@ public class RunServerMojo extends AbstractMojo {
             File resolvedAssets = new AssetsResolver(getLog()).resolve(assetsPath, resolvedServerJar);
             File resolvedModsDir = new File(workingDirectory, "mods");
 
-            new ArtifactCopier(getLog()).copyArtifacts(project, resolvedModsDir, clearMods);
+            // Default scopes if not configured
+            if (allowedScopes == null || allowedScopes.isEmpty()) {
+                allowedScopes = List.of("compile", "provided", "runtime");
+            }
+
+            new ArtifactCopier(getLog()).copyArtifacts(
+                    project, artifactFile, resolvedModsDir, clearMods,
+                    copyDependencies, allowedScopes, excludedArtifacts);
 
             // Build server arguments (shared across execution modes)
             List<String> serverArgsList = new ServerCommandBuilder()

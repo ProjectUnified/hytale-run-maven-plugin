@@ -10,13 +10,14 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.util.List;
 import java.util.Set;
 import java.util.jar.JarFile;
 
 /**
- * Copies the project artifact and its runtime dependencies into the mods
- * directory. Only JARs containing a {@code manifest.json} at the root are
- * copied, since the Hytale plugin system requires it.
+ * Copies the project artifact and its dependencies into the mods directory.
+ * Only JARs containing a {@code manifest.json} at the root are copied,
+ * since the Hytale plugin system requires it.
  */
 public class ArtifactCopier {
 
@@ -27,16 +28,26 @@ public class ArtifactCopier {
     }
 
     /**
-     * Copies the project JAR and runtime dependencies into the target directory.
-     * Only artifacts containing {@code manifest.json} are copied.
-     * The server artifact ({@code com.hypixel.hytale:Server}) is excluded.
+     * Copies the project JAR and optionally its dependencies into the target
+     * directory. Only artifacts containing {@code manifest.json} are copied.
+     * The server artifact ({@code com.hypixel.hytale:Server}) is always
+     * excluded.
      *
-     * @param project   the Maven project
-     * @param targetDir the mods directory to copy into
+     * @param project           the Maven project
+     * @param artifactFile      the artifact file to copy into
+     * @param targetDir         the mods directory to copy into
+     * @param clearMods         whether to clear existing JARs before copying
+     * @param copyDependencies  whether to copy dependency artifacts
+     * @param allowedScopes     the artifact scopes to include (e.g. compile,
+     *                          provided, runtime)
+     * @param excludedArtifacts artifacts to exclude, formatted as
+     *                          {@code groupId:artifactId}
      * @throws IOException          if a file copy fails
      * @throws MojoFailureException if the project artifact is not available
      */
-    public void copyArtifacts(MavenProject project, File targetDir, boolean clearMods)
+    public void copyArtifacts(MavenProject project, File artifactFile, File targetDir, boolean clearMods,
+                              boolean copyDependencies, List<String> allowedScopes,
+                              List<String> excludedArtifacts)
             throws IOException, MojoFailureException {
         // Clear existing JARs from the mods directory
         if (clearMods) {
@@ -44,57 +55,89 @@ public class ArtifactCopier {
         }
 
         // Copy the project's own artifact
-        File projectJar = resolveProjectArtifact(project);
-        if (!hasManifest(projectJar)) {
-            throw new MojoFailureException(
-                    "Project artifact does not contain manifest.json. "
-                            + "Hytale plugins require a manifest.json at the JAR root.");
+        if (!artifactFile.isFile()) {
+            throw new MojoFailureException("Artifact file is not a file: " + artifactFile.getAbsolutePath());
         }
-        copyFile(projectJar, targetDir);
-        log.info("Copied project artifact: " + projectJar.getName());
+        if (!hasManifest(artifactFile)) {
+            throw new MojoFailureException(
+                    "Artifact file does not contain manifest.json. Hytale plugins require a manifest.json at the JAR root.");
+        }
+        copyFile(artifactFile, targetDir);
+        log.info("Copied project artifact: " + artifactFile.getName());
 
-        // Copy runtime dependencies that have manifest.json (excluding the server
-        // itself)
+        // Copy dependencies if enabled
+        if (!copyDependencies) {
+            log.info("Dependency copying is disabled.");
+            return;
+        }
+
         Set<Artifact> artifacts = project.getArtifacts();
-        if (artifacts != null) {
-            for (Artifact artifact : artifacts) {
-                if (ServerJarResolver.SERVER_GROUP_ID.equals(artifact.getGroupId())
-                        && ServerJarResolver.SERVER_ARTIFACT_ID.equals(artifact.getArtifactId())) {
-                    continue; // don't copy the server JAR into mods
-                }
+        if (artifacts == null) {
+            return;
+        }
 
-                String scope = artifact.getScope();
-                if (Artifact.SCOPE_COMPILE.equals(scope) || Artifact.SCOPE_RUNTIME.equals(scope)) {
-                    File file = artifact.getFile();
-                    if (file != null && file.isFile() && hasManifest(file)) {
-                        copyFile(file, targetDir);
-                        log.debug("Copied dependency: " + artifact.getId());
-                    }
-                }
+        for (Artifact artifact : artifacts) {
+            // Always exclude the server JAR
+            if (isServerArtifact(artifact)) {
+                continue;
+            }
+
+            // Check user exclusions
+            if (isExcluded(artifact, excludedArtifacts)) {
+                log.debug("Excluded by configuration: " + artifact.getId());
+                continue;
+            }
+
+            // Check scope
+            String scope = artifact.getScope();
+            if (allowedScopes != null && !allowedScopes.contains(scope)) {
+                continue;
+            }
+
+            File file = artifact.getFile();
+            if (file != null && file.isFile() && hasManifest(file)) {
+                copyFile(file, targetDir);
+                log.debug("Copied dependency: " + artifact.getId());
             }
         }
     }
 
-    private File resolveProjectArtifact(MavenProject project) throws MojoFailureException {
-        // Try the normal artifact file first
-        Artifact projectArtifact = project.getArtifact();
-        if (projectArtifact != null && projectArtifact.getFile() != null && projectArtifact.getFile().isFile()) {
-            return projectArtifact.getFile();
-        }
+    private boolean isServerArtifact(Artifact artifact) {
+        return ServerJarResolver.SERVER_GROUP_ID.equals(artifact.getGroupId())
+                && ServerJarResolver.SERVER_ARTIFACT_ID.equals(artifact.getArtifactId());
+    }
 
-        // Fall back to the expected build output (needed when @Execute forks the
-        // lifecycle)
-        String buildDir = project.getBuild().getDirectory();
-        String finalName = project.getBuild().getFinalName();
-        String packaging = project.getPackaging();
-        File expectedJar = new File(buildDir, finalName + "." + packaging);
-        if (expectedJar.isFile()) {
-            log.debug("Resolved project artifact from build output: " + expectedJar.getAbsolutePath());
-            return expectedJar;
+    private boolean isExcluded(Artifact artifact, List<String> excludedArtifacts) {
+        if (excludedArtifacts == null || excludedArtifacts.isEmpty()) {
+            return false;
         }
+        for (String exclusion : excludedArtifacts) {
+            String[] parts = exclusion.split(":", 2);
+            if (parts.length != 2) {
+                continue;
+            }
+            String groupPattern = parts[0];
+            String artifactPattern = parts[1];
+            if (artifact.getGroupId().equals(groupPattern)
+                    && matchesWildcard(artifact.getArtifactId(), artifactPattern)) {
+                return true;
+            }
+        }
+        return false;
+    }
 
-        throw new MojoFailureException(
-                "Project artifact not found. Make sure the project is packaged before running this goal.");
+    private boolean matchesWildcard(String value, String pattern) {
+        if ("*".equals(pattern)) {
+            return true;
+        }
+        int starIndex = pattern.indexOf('*');
+        if (starIndex < 0) {
+            return value.equals(pattern);
+        }
+        String prefix = pattern.substring(0, starIndex);
+        String suffix = pattern.substring(starIndex + 1);
+        return value.startsWith(prefix) && value.endsWith(suffix)
+                && value.length() >= prefix.length() + suffix.length();
     }
 
     private void clearJars(File directory) throws IOException {
