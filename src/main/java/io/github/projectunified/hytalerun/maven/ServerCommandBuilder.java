@@ -11,7 +11,7 @@ import java.util.List;
  * Builds the command line for launching the Hytale server.
  * <p>
  * Usage:
- * 
+ *
  * <pre>{@code
  * List<String> cmd = new ServerCommandBuilder(log)
  *         .serverJar(jar)

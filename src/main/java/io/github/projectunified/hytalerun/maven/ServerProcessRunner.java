@@ -21,7 +21,7 @@ public class ServerProcessRunner {
 
     /**
      * Launches the server as a child process and waits for it to complete.
-     * Registers a shutdown hook to gracefully terminate the server on Ctrl+C.
+     * Registers a shutdown hook to terminate the server on Ctrl+C.
      *
      * @param command          the command line to execute
      * @param workingDirectory the working directory for the process

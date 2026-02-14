@@ -38,13 +38,7 @@ public class ArtifactCopier {
      */
     public void copyArtifacts(MavenProject project, File targetDir) throws IOException, MojoFailureException {
         // Copy the project's own artifact
-        Artifact projectArtifact = project.getArtifact();
-        if (projectArtifact == null || projectArtifact.getFile() == null) {
-            throw new MojoFailureException(
-                    "Project artifact not found. Make sure the project is packaged before running this goal.");
-        }
-
-        File projectJar = projectArtifact.getFile();
+        File projectJar = resolveProjectArtifact(project);
         if (!hasManifest(projectJar)) {
             throw new MojoFailureException(
                     "Project artifact does not contain manifest.json. "
@@ -73,6 +67,28 @@ public class ArtifactCopier {
                 }
             }
         }
+    }
+
+    private File resolveProjectArtifact(MavenProject project) throws MojoFailureException {
+        // Try the normal artifact file first
+        Artifact projectArtifact = project.getArtifact();
+        if (projectArtifact != null && projectArtifact.getFile() != null && projectArtifact.getFile().isFile()) {
+            return projectArtifact.getFile();
+        }
+
+        // Fall back to the expected build output (needed when @Execute forks the
+        // lifecycle)
+        String buildDir = project.getBuild().getDirectory();
+        String finalName = project.getBuild().getFinalName();
+        String packaging = project.getPackaging();
+        File expectedJar = new File(buildDir, finalName + "." + packaging);
+        if (expectedJar.isFile()) {
+            log.debug("Resolved project artifact from build output: " + expectedJar.getAbsolutePath());
+            return expectedJar;
+        }
+
+        throw new MojoFailureException(
+                "Project artifact not found. Make sure the project is packaged before running this goal.");
     }
 
     private boolean hasManifest(File jarFile) {
