@@ -28,6 +28,7 @@ public class ServerCommandBuilder {
     private boolean disableSentry;
     private List<String> bootCommands;
     private List<String> serverArgs;
+    private List<File> modsDirectory;
 
     public ServerCommandBuilder assetsPath(File assetsPath) {
         this.assetsPath = assetsPath;
@@ -51,6 +52,11 @@ public class ServerCommandBuilder {
 
     public ServerCommandBuilder serverArgs(List<String> serverArgs) {
         this.serverArgs = serverArgs;
+        return this;
+    }
+
+    public ServerCommandBuilder modsDirectory(List<File> modsDirectory) {
+        this.modsDirectory = modsDirectory;
         return this;
     }
 
@@ -78,6 +84,14 @@ public class ServerCommandBuilder {
         // Disable Sentry
         if (disableSentry) {
             args.add("--disable-sentry");
+        }
+
+        // Additional mods directories
+        if (modsDirectory != null && !modsDirectory.isEmpty()) {
+            for (File modsDirectory : modsDirectory) {
+                args.add("--mods");
+                args.add(modsDirectory.getAbsolutePath());
+            }
         }
 
         // Boot commands

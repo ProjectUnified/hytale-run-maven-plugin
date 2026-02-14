@@ -8,7 +8,6 @@ import org.apache.maven.project.MavenProject;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.Files;
 import java.util.List;
 
 /**
@@ -57,11 +56,10 @@ public class RunServerMojo extends AbstractMojo {
     private File workingDirectory;
 
     /**
-     * Directory where plugin JARs are copied.
-     * Defaults to {@code <workingDirectory>/mods} if not specified.
+     * Additional mod directories to be included in the server
      */
     @Parameter(property = "hytale.modsDirectory")
-    private File modsDirectory;
+    private List<File> modsDirectory;
 
     /**
      * Authentication mode: {@code authenticated}, {@code offline}, or
@@ -125,7 +123,7 @@ public class RunServerMojo extends AbstractMojo {
         try {
             File resolvedServerJar = new ServerJarResolver(getLog()).resolve(serverJar, project);
             File resolvedAssets = new AssetsResolver(getLog()).resolve(assetsPath, resolvedServerJar);
-            File resolvedModsDir = resolveModsDirectory();
+            File resolvedModsDir = new File(workingDirectory, "mods");
 
             new ArtifactCopier(getLog()).copyArtifacts(project, resolvedModsDir, clearMods);
 
@@ -136,6 +134,7 @@ public class RunServerMojo extends AbstractMojo {
                     .disableSentry(disableSentry)
                     .bootCommands(bootCommands)
                     .serverArgs(serverArgs)
+                    .modsDirectory(modsDirectory)
                     .build();
 
             new ForkedServerRunner(getLog(), resolvedServerJar)
@@ -147,13 +146,5 @@ public class RunServerMojo extends AbstractMojo {
         } catch (IOException e) {
             throw new MojoExecutionException("Failed to run Hytale server", e);
         }
-    }
-
-    private File resolveModsDirectory() throws IOException {
-        if (modsDirectory == null) {
-            modsDirectory = new File(workingDirectory, "mods");
-        }
-        Files.createDirectories(modsDirectory.toPath());
-        return modsDirectory;
     }
 }
