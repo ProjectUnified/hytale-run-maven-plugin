@@ -67,7 +67,7 @@ public class RunServerMojo extends AbstractMojo {
      * Authentication mode: {@code authenticated}, {@code offline}, or
      * {@code insecure}.
      */
-    @Parameter(property = "hytale.authMode", defaultValue = "offline")
+    @Parameter(property = "hytale.authMode", defaultValue = "authenticated")
     private String authMode;
 
     /**
