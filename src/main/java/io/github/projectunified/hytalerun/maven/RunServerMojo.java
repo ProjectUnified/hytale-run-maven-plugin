@@ -107,7 +107,7 @@ public class RunServerMojo extends AbstractMojo {
     private boolean disableSentry;
 
     /**
-     * Commands to run on server boot (comma-separated when passed via CLI).
+     * Commands to run on server boot.
      */
     @Parameter(property = "hytale.bootCommands")
     private List<String> bootCommands;
