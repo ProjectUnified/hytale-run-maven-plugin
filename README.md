@@ -5,10 +5,18 @@ development.
 
 ## What it does
 
-1. Copies your project's JAR and its runtime dependencies into a `mods/`
-   directory
-2. Launches the Hytale server as a child process with the mods loaded
-3. Optionally enables remote JDWP debugging
+1. **Auto-Builds**: Automatically runs the `package` phase of your project
+   before executing the server.
+2. **Plugin Management**:
+   - Copies your project's JAR into the server's `mods/` directory.
+   - Optionally copies runtime dependencies (only those containing a
+     `manifest.json`).
+   - Supports clearing existing JARs in the `mods/` directory before copying.
+   - Allows filtering dependencies by scope and explicit exclusions (with
+     wildcards).
+3. **Process Management**: Launches the Hytale server as a forked child process.
+4. **Auto-Debug**: Detects if Maven is being debugged and automatically
+   configures the server for remote debugging.
 
 ## Usage
 
@@ -22,9 +30,7 @@ Add the plugin to your project's `pom.xml`:
             <artifactId>hytale-run-maven-plugin</artifactId>
             <version>1.0-SNAPSHOT</version>
             <configuration>
-                <!-- Optional: server JAR is auto-resolved (see below) -->
-                <!-- <serverJar>/path/to/HytaleServer.jar</serverJar> -->
-                <authMode>offline</authMode>
+                <authMode>authenticated</authMode>
             </configuration>
         </plugin>
     </plugins>
@@ -34,77 +40,63 @@ Add the plugin to your project's `pom.xml`:
 Then run:
 
 ```bash
-mvn package hytale-run:run
+mvn hytale-run:run
 ```
-
-## Server JAR Resolution
-
-If `serverJar` is not explicitly configured, the plugin resolves it
-automatically:
-
-1. **Dependency lookup** — scans project dependencies for
-   `com.hypixel.hytale:Server`
-2. **Default install path** — checks the platform-specific Hytale installation:
-   - **Windows**:
-     `%APPDATA%/Hytale/install/release/package/game/latest/Server/HytaleServer.jar`
-   - **Linux**:
-     `$XDG_DATA_HOME/Hytale/install/release/package/game/latest/Server/HytaleServer.jar`
-   - **macOS**:
-     `~/Application Support/Hytale/install/release/package/game/latest/Server/HytaleServer.jar`
-
-## Assets Resolution
-
-If `assetsPath` is not explicitly configured, the plugin looks for `Assets.zip`
-relative to the resolved server JAR (at `<serverDir>/../Assets.zip`).
 
 ## Configuration
 
-| Parameter          | Property                  | Default             | Description                                        |
-| ------------------ | ------------------------- | ------------------- | -------------------------------------------------- |
-| `serverJar`        | `hytale.serverJar`        | _(auto-resolved)_   | Path to the Hytale server JAR                      |
-| `assetsPath`       | `hytale.assetsPath`       | _(auto-resolved)_   | Path to assets directory/zip                       |
-| `workingDirectory` | `hytale.workingDirectory` | `target/hytale`     | Server working directory                           |
-| `modsDirectory`    | `hytale.modsDirectory`    | `<workingDir>/mods` | Directory for plugin JARs                          |
-| `authMode`         | `hytale.authMode`         | `offline`           | Auth mode (`authenticated`, `offline`, `insecure`) |
-| `debug`            | `hytale.debug`            | `false`             | Enable remote JDWP debugging                       |
-| `debugPort`        | `hytale.debugPort`        | `5005`              | Debug port                                         |
-| `debugSuspend`     | `hytale.debugSuspend`     | `false`             | Suspend until debugger attaches                    |
-| `jvmArgs`          | `hytale.jvmArgs`          | _(empty)_           | Extra JVM arguments                                |
-| `serverArgs`       | `hytale.serverArgs`       | _(empty)_           | Extra server CLI arguments                         |
-| `bare`             | `hytale.bare`             | `false`             | Run in bare mode (no worlds/ports)                 |
-| `bootCommands`     | `hytale.bootCommands`     | _(empty)_           | Commands to run on server boot                     |
+| Parameter           | Property                   | Default                      | Description                                        |
+|:--------------------|:---------------------------|:-----------------------------|:---------------------------------------------------|
+| `serverJar`         | `hytale.serverJar`         | _(auto-resolved)_            | Path to the Hytale server JAR                      |
+| `assetsPath`        | `hytale.assetsPath`        | _(auto-resolved)_            | Path to assets directory/zip                       |
+| `artifactFile`      | `hytale.artifactFile`      | `target/*.jar`               | The project JAR file to be used in the server      |
+| `workingDirectory`  | `hytale.workingDirectory`  | `target/hytale`              | Server working directory                           |
+| `modsDirectory`     | `hytale.modsDirectory`     | _(none)_                     | Additional mod directories to include              |
+| `authMode`          | `hytale.authMode`          | `authenticated`              | Auth mode (`authenticated`, `offline`, `insecure`) |
+| `debug`             | `hytale.debug`             | `false`                      | Manually enable remote JDWP debugging              |
+| `debugPort`         | `hytale.debugPort`         | `5005`                       | Debug port                                         |
+| `debugSuspend`      | `hytale.debugSuspend`      | `false`                      | Suspend until debugger attaches                    |
+| `jvmArgs`           | `hytale.jvmArgs`           | _(empty)_                    | Extra JVM arguments for the server                 |
+| `serverArgs`        | `hytale.serverArgs`        | _(empty)_                    | Extra server CLI arguments                         |
+| `disableSentry`     | `hytale.disableSentry`     | `true`                       | Disable Sentry error reporting                     |
+| `bootCommands`      | `hytale.bootCommands`      | _(none)_                     | Commands to run on server boot                     |
+| `clearMods`         | `hytale.clearMods`         | `true`                       | Clear `mods/` directory before copying             |
+| `copyDependencies`  | `hytale.copyDependencies`  | `true`                       | Copy plugin dependencies to `mods/`                |
+| `allowedScopes`     | `hytale.allowedScopes`     | `compile, provided, runtime` | Scopes of dependencies to copy                     |
+| `excludedArtifacts` | `hytale.excludedArtifacts` | _(none)_                     | Artifacts to exclude (`groupId:artifactId`)        |
 
-## Debug Mode
+### Dependency Filtering
 
-Enable remote debugging to attach your IDE's debugger:
-
-```xml
-<configuration>
-    <debug>true</debug>
-    <debugPort>5005</debugPort>
-    <debugSuspend>true</debugSuspend>
-</configuration>
-```
-
-This adds `-agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=*:5005`
-to the JVM launch arguments.
-
-## Example: Full Configuration
+You can exclude specific artifacts from being copied to the `mods/` directory.
+ArtifactId supports wildcards (`*`):
 
 ```xml
 <configuration>
-    <serverJar>/path/to/HytaleServer.jar</serverJar>
-    <assetsPath>/path/to/Assets.zip</assetsPath>
-    <authMode>offline</authMode>
-    <bare>true</bare>
-    <debug>true</debug>
-    <debugPort>5005</debugPort>
-    <debugSuspend>false</debugSuspend>
-    <jvmArgs>
-        <jvmArg>-Xmx4G</jvmArg>
-    </jvmArgs>
-    <bootCommands>
-        <bootCommand>op PlayerName</bootCommand>
-    </bootCommands>
+    <excludedArtifacts>
+        <exclude>com.example:unwanted-lib</exclude>
+        <exclude>io.github.*:*</exclude>
+        <exclude>org.apache:*-core</exclude>
+    </excludedArtifacts>
 </configuration>
 ```
+
+## Debugging
+
+The plugin features **Auto-Detect Debug**. If you run Maven in debug mode (e.g.,
+via IntelliJ IDEA's "Debug" button), the plugin will:
+
+1. Automatically enable debug mode on the forked server.
+2. Set `suspend=y` so the server waits for you.
+3. Prompt you to attach your IDE's debugger to the specified `debugPort`
+   (default 5005).
+
+To debug, create a **Remote JVM Debug** configuration in your IDE targeting
+`localhost:5005`.
+
+## Server JAR Resolution
+
+If `serverJar` is not configured, the plugin resolves it by:
+
+1. Checking for a `com.hypixel.hytale:Server` dependency in the project.
+2. Checking platform-specific default paths (e.g., `%APPDATA%/Hytale/...` on
+   Windows).
