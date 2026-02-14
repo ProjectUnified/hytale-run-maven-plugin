@@ -21,7 +21,7 @@ import java.util.List;
  * plugin automatically configures the forked server with a JDWP agent so you
  * can attach a Remote JVM Debug configuration.
  */
-@Mojo(name = "run", defaultPhase = LifecyclePhase.PACKAGE, requiresDependencyResolution = ResolutionScope.RUNTIME)
+@Mojo(name = "run", defaultPhase = LifecyclePhase.PACKAGE, requiresDependencyResolution = ResolutionScope.COMPILE_PLUS_RUNTIME)
 @Execute(phase = LifecyclePhase.PACKAGE)
 public class RunServerMojo extends AbstractMojo {
 
