@@ -109,6 +109,12 @@ public class RunServerMojo extends AbstractMojo {
     private boolean bare;
 
     /**
+     * Disable sentry report to Hytale
+     */
+    @Parameter(property = "hytale.disableSentry", defaultValue = "true")
+    private boolean disableSentry;
+
+    /**
      * Commands to run on server boot (comma-separated when passed via CLI).
      */
     @Parameter(property = "hytale.bootCommands")
@@ -134,6 +140,7 @@ public class RunServerMojo extends AbstractMojo {
                     .assetsPath(resolvedAssets)
                     .authMode(authMode)
                     .bare(bare)
+                    .disableSentry(disableSentry)
                     .bootCommands(bootCommands)
                     .serverArgs(serverArgs)
                     .build();

@@ -27,6 +27,7 @@ public class ServerCommandBuilder {
     private File assetsPath;
     private String authMode = "offline";
     private boolean bare;
+    private boolean disableSentry;
     private List<String> bootCommands;
     private List<String> serverArgs;
 
@@ -42,6 +43,11 @@ public class ServerCommandBuilder {
 
     public ServerCommandBuilder bare(boolean bare) {
         this.bare = bare;
+        return this;
+    }
+
+    public ServerCommandBuilder disableSentry(boolean disableSentry) {
+        this.disableSentry = disableSentry;
         return this;
     }
 
@@ -79,6 +85,11 @@ public class ServerCommandBuilder {
         // Bare mode
         if (bare) {
             args.add("--bare");
+        }
+
+        // Disable Sentry
+        if (disableSentry) {
+            args.add("--disable-sentry");
         }
 
         // Boot commands
