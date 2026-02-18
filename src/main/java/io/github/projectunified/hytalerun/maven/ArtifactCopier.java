@@ -49,6 +49,11 @@ public class ArtifactCopier {
                               boolean copyDependencies, List<String> allowedScopes,
                               List<String> excludedArtifacts)
             throws IOException, MojoFailureException {
+        if (!targetDir.exists()) {
+            Files.createDirectories(targetDir.toPath());
+            log.info("Creating target directory: " + targetDir.getAbsolutePath());
+        }
+
         // Clear existing JARs from the mods directory
         if (clearMods) {
             clearJars(targetDir);
